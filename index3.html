@@ -1,0 +1,667 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Mellborry Music Wheel</title>
+    <style>
+        :root {
+            --bg: #000000;
+            --text: #ffffff;
+            --muted: #8a8a8a;
+            --center: #050505;
+            --stroke: rgba(0,0,0,1);
+            --stroke-width: 2;
+            --player-bg: rgba(10,10,10,0.96);
+            --player-border: rgba(255,255,255,0.08);
+            --header-height: 92px;
+            --player-height: 110px;
+            /* glow behind wheel */
+            --bg-glow-r: 0;
+            --bg-glow-g: 0;
+            --bg-glow-b: 0;
+            --bg-glow-alpha: 0.28;
+            --bg-glow-size: 18%;
+        }
+
+        * {
+            box-sizing: border-box;
+        }
+
+        html, body {
+            width: 100%;
+            height: 100%;
+            margin: 0;
+            overflow: hidden;
+            color: var(--text);
+            font-family: 'Courier New', monospace;
+            background: radial-gradient( circle at center, rgba(var(--bg-glow-r), var(--bg-glow-g), var(--bg-glow-b), var(--bg-glow-alpha)) 0%, rgba(var(--bg-glow-r), var(--bg-glow-g), var(--bg-glow-b), calc(var(--bg-glow-alpha) * 0.55)) var(--bg-glow-size), rgba(0,0,0,0.72) calc(var(--bg-glow-size) + 12%), rgba(0,0,0,0.92) calc(var(--bg-glow-size) + 28%), #000000 100% ), #000000;
+        }
+
+        body {
+            position: relative;
+        }
+
+        .topbar {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            min-height: var(--header-height);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            padding: 12px 18px 10px;
+            z-index: 20;
+        }
+
+        h1 {
+            margin: 0;
+            font-size: clamp(24px, 2.6vw, 36px);
+            font-weight: 800;
+            letter-spacing: 0.02em;
+            text-align: center;
+            line-height: 1;
+        }
+
+        .top-link {
+            color: var(--muted);
+            text-decoration: none;
+            font-size: clamp(11px, 1.2vw, 14px);
+            line-height: 1;
+            transition: opacity 0.16s ease, color 0.16s ease;
+        }
+
+            .top-link:hover {
+                color: #b5b5b5;
+                opacity: 1;
+            }
+
+        .app {
+            width: 100vw;
+            height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding-top: var(--header-height);
+            padding-bottom: var(--player-height);
+        }
+
+        .wheel-wrap {
+            width: min(72vmin, 620px);
+            aspect-ratio: 1 / 1;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        svg {
+            width: 100%;
+            height: auto;
+            display: block;
+            overflow: visible;
+        }
+
+        .segment {
+            cursor: pointer;
+            transition: filter 0.16s ease, opacity 0.16s ease;
+            transform-origin: 400px 400px;
+            stroke: var(--stroke);
+            stroke-width: var(--stroke-width);
+        }
+
+            .segment:hover {
+                filter: brightness(2);
+            }
+
+            .segment.active {
+                filter: brightness(10);
+                stroke: rgba(255,255,255,1) !important;
+            }
+
+        .label {
+            fill: #ffffff;
+            font-weight: 800;
+            text-anchor: middle;
+            pointer-events: none;
+            user-select: none;
+            letter-spacing: 0.2px;
+            font-family: "Cascadia Mono", "Courier New", monospace;
+        }
+
+            .label.outer {
+                font-size: 26px;
+                opacity: 0.96;
+            }
+
+            .label.middle {
+                font-size: 22px;
+            }
+
+            .label.inner {
+                font-size: 18px;
+                opacity: 0.92;
+            }
+
+            .label.active {
+                fill: #000000;
+            }
+
+        .logo-image {
+            pointer-events: none;
+            user-select: none;
+        }
+
+        .player-dock {
+            position: fixed;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            padding: 14px 18px 18px;
+            background: var(--player-bg);
+            border-top: 1px solid var(--player-border);
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+            transform: translateY(100%);
+            opacity: 0;
+            pointer-events: none;
+            transition: transform 0.28s ease, opacity 0.28s ease;
+            z-index: 25;
+        }
+
+            .player-dock.visible {
+                transform: translateY(0);
+                opacity: 1;
+                pointer-events: auto;
+            }
+
+        .now-playing {
+            text-align: center;
+            font-size: 16px;
+            font-weight: 700;
+            min-height: 20px;
+        }
+
+        audio {
+            width: min(900px, 100%);
+            margin: 0 auto;
+            display: block;
+        }
+
+        @media (max-width: 700px) {
+            :root {
+                --header-height: 88px;
+                --player-height: 118px;
+            }
+
+            .wheel-wrap {
+                width: min(78vmin, 520px);
+            }
+
+            .label.outer {
+                font-size: 9px;
+            }
+
+            .label.middle {
+                font-size: 12px;
+            }
+
+            .label.inner {
+                font-size: 8px;
+            }
+
+            .top-link {
+                font-size: 11px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <header class="topbar">
+        <h1>Mellborry Music Wheel</h1>
+        <a class="top-link" href="https://example.com" target="_blank" rel="noopener noreferrer">
+            mellborry.com / about this wheel
+        </a>
+    </header>
+
+    <main class="app">
+        <div class="wheel-wrap">
+            <svg id="wheel" viewBox="0 0 800 800" aria-label="Plutchik emotion wheel">
+                <defs>
+                    <!-- Маска: белым показываем только сегменты -->
+                    <mask id="segmentsMask">
+                        <rect x="0" y="0" width="800" height="800" fill="black"></rect>
+                        <g id="segmentsMaskGroup"></g>
+                    </mask>
+                </defs>
+
+                <!-- Цветные сегменты -->
+                <g id="segments"></g>
+
+                <!-- PNG-текстура только поверх сегментов -->
+                <image href="textures/grain-overlay.png"
+                       x="40"
+                       y="40"
+                       width="720"
+                       height="720"
+                       preserveAspectRatio="xMidYMid slice"
+                       mask="url(#segmentsMask)"
+                       style="mix-blend-mode: soft-light;"
+                       opacity="0.55"
+                       pointer-events="none" />
+
+                <!-- Центр отдельно, без текстуры -->
+                <circle cx="400" cy="400" r="86" fill="var(--center)" stroke="rgba(255,255,255,0.06)" stroke-width="8"></circle>
+
+                <!-- Лейблы поверх текстуры -->
+                <g id="labels"></g>
+
+                <!-- Логотип поверх всего -->
+                <image href="https://upload.wikimedia.org/wikipedia/commons/a/a7/React-icon.svg"
+                       x="340"
+                       y="340"
+                       width="120"
+                       height="120"
+                       preserveAspectRatio="xMidYMid meet"
+                       class="logo-image" />
+            </svg>
+        </div>
+    </main>
+
+    <div class="player-dock" id="playerDock">
+        <div class="now-playing" id="nowPlaying">Now playing</div>
+        <audio id="audioPlayer" controls preload="metadata"></audio>
+    </div>
+
+    <script>
+        const emotions = [
+        {
+        base: 'Joy',
+        outer: 'Serenity',
+        inner: 'Ecstasy',
+        color: '#dbc21f',
+        outerFile: 'audio/test.mp3',
+        baseFile: 'audio/test.mp3',
+        innerFile: 'audio/test.mp3'
+        },
+        {
+        base: 'Trust',
+        outer: 'Acceptance',
+        inner: 'Admiration',
+        color: '#3ed431',
+        outerFile: 'audio/test.mp3',
+        baseFile: 'audio/test.mp3',
+        innerFile: 'audio/test.mp3'
+        },
+        {
+        base: 'Fear',
+        outer: 'Apprehension',
+        inner: 'Terror',
+        color: '#454746',
+        outerFile: 'audio/test.mp3',
+        baseFile: 'audio/test.mp3',
+        innerFile: 'audio/test.mp3'
+        },
+        {
+        base: 'Surprise',
+        outer: 'Distraction',
+        inner: 'Amazement',
+        color: '#3ab6cf',
+        outerFile: 'audio/test.mp3',
+        baseFile: 'audio/test.mp3',
+        innerFile: 'audio/test.mp3'
+        },
+        {
+        base: 'Sadness',
+        outer: 'Pensiveness',
+        inner: 'Grief',
+        color: '#1c4ad4',
+        outerFile: 'audio/test.mp3',
+        baseFile: 'audio/test.mp3',
+        innerFile: 'audio/test.mp3'
+        },
+        {
+        base: 'Disgust',
+        outer: 'Boredom',
+        inner: 'Loathing',
+        color: '#8239a3',
+        outerFile: 'audio/test.mp3',
+        baseFile: 'audio/test.mp3',
+        innerFile: 'audio/test.mp3'
+        },
+        {
+        base: 'Anger',
+        outer: 'Annoyance',
+        inner: 'Rage',
+        color: '#db382c',
+        outerFile: 'audio/test.mp3',
+        baseFile: 'audio/test.mp3',
+        innerFile: 'audio/test.mp3'
+        },
+        {
+        base: 'Anticipation',
+        outer: 'Interest',
+        inner: 'Vigilance',
+        color: '#ff9448',
+        outerFile: 'audio/test.mp3',
+        baseFile: 'audio/test.mp3',
+        innerFile: 'audio/test.mp3'
+        }
+        ];
+
+        const ringConfig = [
+        { key: 'outer', labelClass: 'outer', innerR: 255, outerR: 360, shade: 0.82, fileKey: 'outerFile' },
+        { key: 'base',  labelClass: 'middle', innerR: 172, outerR: 270, shade: 1.00, fileKey: 'baseFile' },
+        { key: 'inner', labelClass: 'inner', innerR: 98,  outerR: 188, shade: 1.12, fileKey: 'innerFile' }
+        ];
+
+        const cx = 400;
+        const cy = 400;
+
+        const segmentsGroup = document.getElementById('segments');
+        const labelsGroup = document.getElementById('labels');
+        const segmentsMaskGroup = document.getElementById('segmentsMaskGroup');
+
+        const audio = document.getElementById('audioPlayer');
+        const nowPlaying = document.getElementById('nowPlaying');
+        const playerDock = document.getElementById('playerDock');
+
+        let audioCtx = null;
+        let analyser = null;
+        let sourceNode = null;
+        let freqData = null;
+        let animationFrameId = null;
+        let currentGlowBase = { r: 0, g: 0, b: 0 };
+        let audioGraphReady = false;
+
+        function polarToCartesian(cx, cy, r, angleDeg) {
+        const angleRad = (angleDeg - 90) * Math.PI / 180;
+        return {
+        x: cx + r * Math.cos(angleRad),
+        y: cy + r * Math.sin(angleRad)
+        };
+        }
+
+        function hexToRgb(hex) {
+        const clean = hex.replace('#', '');
+        const full = clean.length === 3
+        ? clean.split('').map(ch => ch + ch).join('')
+        : clean;
+
+        const bigint = parseInt(full, 16);
+
+        return {
+        r: (bigint >> 16) & 255,
+        g: (bigint >> 8) & 255,
+        b: bigint & 255
+        };
+        }
+
+        function rgbToHex(r, g, b) {
+        const toHex = (v) => Math.max(0, Math.min(255, Math.round(v))).toString(16).padStart(2, '0');
+        return `#${toHex(r)}${toHex(g)}${toHex(b)}`;
+        }
+
+        function shadeColor(hex, factor) {
+        const { r, g, b } = hexToRgb(hex);
+        return rgbToHex(r * factor, g * factor, b * factor);
+        }
+
+        function setGlowColorFromHex(hex, factor = 0.42) {
+        const { r, g, b } = hexToRgb(hex);
+
+        currentGlowBase = {
+        r: Math.max(0, Math.min(255, Math.floor(r * factor))),
+        g: Math.max(0, Math.min(255, Math.floor(g * factor))),
+        b: Math.max(0, Math.min(255, Math.floor(b * factor)))
+        };
+
+        document.documentElement.style.setProperty('--bg-glow-r', currentGlowBase.r);
+        document.documentElement.style.setProperty('--bg-glow-g', currentGlowBase.g);
+        document.documentElement.style.setProperty('--bg-glow-b', currentGlowBase.b);
+        }
+
+        function setGlowIntensity(level = 0) {
+        const clamped = Math.max(0, Math.min(1, level));
+
+        /* stronger neon-like glow */
+        const alpha = 0.24 + clamped * 0.52;
+        const size = 18 + clamped * 18;
+
+        document.documentElement.style.setProperty('--bg-glow-alpha', alpha.toFixed(3));
+        document.documentElement.style.setProperty('--bg-glow-size', `${size.toFixed(2)}%`);
+        }
+
+        function initAudioVisualizer() {
+        if (audioGraphReady) return;
+
+        const AudioContextClass = window.AudioContext || window.webkitAudioContext;
+        if (!AudioContextClass) {
+        console.warn('Web Audio API is not supported in this browser.');
+        return;
+        }
+
+        audioCtx = new AudioContextClass();
+
+        analyser = audioCtx.createAnalyser();
+        analyser.fftSize = 256;
+        analyser.smoothingTimeConstant = 0.82;
+
+        freqData = new Uint8Array(analyser.frequencyBinCount);
+
+        sourceNode = audioCtx.createMediaElementSource(audio);
+        sourceNode.connect(analyser);
+        analyser.connect(audioCtx.destination);
+
+        audioGraphReady = true;
+        }
+
+        function ensureAudioContextRunning() {
+        if (!audioCtx) return;
+        if (audioCtx.state === 'suspended') {
+        audioCtx.resume().catch(err => {
+        console.warn('AudioContext resume failed:', err);
+        });
+        }
+        }
+
+        function getAverageEnergy() {
+        if (!analyser || !freqData) return 0;
+
+        analyser.getByteFrequencyData(freqData);
+
+        let weightedSum = 0;
+        let weightTotal = 0;
+
+        for (let i = 0; i < freqData.length; i++) {
+        const value = freqData[i] / 255;
+
+        let weight = 1;
+        if (i < freqData.length * 0.18) weight = 1.9;       // low
+        else if (i < freqData.length * 0.45) weight = 1.35; // mids
+        else weight = 0.85;                                 // highs
+
+        weightedSum += value * weight;
+        weightTotal += weight;
+        }
+
+        return weightTotal ? (weightedSum / weightTotal) : 0;
+        }
+
+        function startVisualizerLoop() {
+        stopVisualizerLoop();
+
+        function tick() {
+        if (!audio.paused && !audio.ended) {
+        const energy = getAverageEnergy();
+
+        /* stronger response */
+        const boosted = Math.min(1, Math.pow(energy, 0.78) * 1.7);
+        setGlowIntensity(boosted);
+
+        animationFrameId = requestAnimationFrame(tick);
+        } else {
+        setGlowIntensity(0.08);
+        animationFrameId = null;
+        }
+        }
+
+        tick();
+        }
+
+        function stopVisualizerLoop() {
+        if (animationFrameId) {
+        cancelAnimationFrame(animationFrameId);
+        animationFrameId = null;
+        }
+        }
+
+        function setGlowForEmotionColor(hex) {
+        setGlowColorFromHex(hex, 0.42);
+        setGlowIntensity(0.08);
+        }
+
+        function createRingSegment(innerR, outerR, startAngle, endAngle) {
+        const startOuter = polarToCartesian(cx, cy, outerR, startAngle);
+        const endOuter = polarToCartesian(cx, cy, outerR, endAngle);
+        const startInner = polarToCartesian(cx, cy, innerR, endAngle);
+        const endInner = polarToCartesian(cx, cy, innerR, startAngle);
+
+        const largeArcFlag = endAngle - startAngle <= 180 ? '0' : '1';
+
+        return [
+        `M ${startOuter.x} ${startOuter.y}`,
+        `A ${outerR} ${outerR} 0 ${largeArcFlag} 1 ${endOuter.x} ${endOuter.y}`,
+        `L ${startInner.x} ${startInner.y}`,
+        `A ${innerR} ${innerR} 0 ${largeArcFlag} 0 ${endInner.x} ${endInner.y}`,
+        'Z'
+        ].join(' ');
+        }
+
+        function getSegmentFile(emotion, ring) {
+        return emotion[ring.fileKey];
+        }
+
+        function getSegmentLabel(emotion, ring) {
+        return ring.key === 'outer'
+        ? emotion.outer
+        : ring.key === 'base'
+        ? emotion.base
+        : emotion.inner;
+        }
+
+        function playTrack(emotion, ring, segmentEl, labelEl) {
+        document.querySelectorAll('.segment').forEach(el => el.classList.remove('active'));
+        document.querySelectorAll('.label').forEach(el => el.classList.remove('active'));
+
+        segmentEl.classList.add('active');
+        labelEl.classList.add('active');
+
+        /* glow color = darkened actual segment fill */
+        const segmentFill = shadeColor(emotion.color, ring.shade);
+        setGlowForEmotionColor(segmentFill);
+
+        /* init visualizer on first user interaction */
+        if (!audioGraphReady) {
+        try {
+        initAudioVisualizer();
+        } catch (err) {
+        console.warn('Visualizer init failed:', err);
+        }
+        }
+
+        ensureAudioContextRunning();
+
+        audio.src = getSegmentFile(emotion, ring);
+        audio.crossOrigin = "anonymous";
+        audio.play().then(() => {
+        startVisualizerLoop();
+        }).catch(err => {
+        console.warn('Playback blocked by browser:', err);
+        });
+
+        const selectedLabel = getSegmentLabel(emotion, ring);
+
+        nowPlaying.textContent = `Now playing: ${emotion.base} — ${selectedLabel}`;
+        playerDock.classList.add('visible');
+        }
+
+        function createText(textValue, x, y, className, rotation = null) {
+        const text = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+        text.setAttribute('x', x);
+        text.setAttribute('y', y);
+        text.setAttribute('class', `label ${className}`);
+        if (rotation !== null) {
+        text.setAttribute('transform', `rotate(${rotation} ${x} ${y})`);
+        }
+        text.textContent = textValue;
+        return text;
+        }
+
+        function createMaskPath(pathD) {
+        const path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+        path.setAttribute('d', pathD);
+        path.setAttribute('fill', 'white');
+        path.setAttribute('stroke', 'none');
+        return path;
+        }
+
+        emotions.forEach((emotion, index) => {
+        const angleSize = 360 / emotions.length;
+        const start = index * angleSize;
+        const end = start + angleSize;
+        const mid = start + angleSize / 2;
+
+        ringConfig.forEach((ring) => {
+        const pathD = createRingSegment(ring.innerR, ring.outerR, start, end);
+
+        // Цветной сегмент
+        const segment = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+        segment.setAttribute('d', pathD);
+        segment.setAttribute('fill', shadeColor(emotion.color, ring.shade));
+        segment.setAttribute('class', 'segment');
+
+        // Маска для текстуры (копия формы сегмента)
+        const maskPath = createMaskPath(pathD);
+        segmentsMaskGroup.appendChild(maskPath);
+
+        // Текст
+        const labelRadius = (ring.innerR + ring.outerR) / 2;
+        const labelPos = polarToCartesian(cx, cy, labelRadius, mid);
+        const labelText = getSegmentLabel(emotion, ring);
+        const rotation = mid > 90 && mid < 270 ? mid + 180 : mid;
+
+        const label = createText(labelText, labelPos.x, labelPos.y, ring.labelClass, rotation);
+
+        segment.addEventListener('click', () => playTrack(emotion, ring, segment, label));
+
+        segmentsGroup.appendChild(segment);
+        labelsGroup.appendChild(label);
+        });
+        });
+
+        /* Initial state: center glow is black */
+        setGlowColorFromHex('#000000', 1);
+        setGlowIntensity(0);
+
+        /* Keep visualizer in sync with player state */
+        audio.addEventListener('play', () => {
+        ensureAudioContextRunning();
+        startVisualizerLoop();
+        });
+
+        audio.addEventListener('pause', () => {
+        stopVisualizerLoop();
+        setGlowIntensity(0.08);
+        });
+
+        audio.addEventListener('ended', () => {
+        stopVisualizerLoop();
+        setGlowIntensity(0.08);
+        });
+    </script>
+</body>
+</html>
